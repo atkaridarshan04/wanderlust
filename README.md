@@ -1,106 +1,132 @@
-# Wanderlust - Your Ultimate Travel Blog 🌍✈️
+# Wanderlust Application Dockerization
 
-WanderLust is a simple MERN travel blog website ✈ This project is aimed to help people to contribute in open source, upskill in react and also master git.
+This file outlines the steps to dockerize the Wanderlust application, which consists of a frontend and backend service using MongoDB and Redis as databases.
 
-![Preview Image](https://github.com/krishnaacharyaa/wanderlust/assets/116620586/17ba9da6-225f-481d-87c0-5d5a010a9538)
+## Prerequisites
 
-## [Figma Design File](https://www.figma.com/file/zqNcWGGKBo5Q2TwwVgR6G5/WanderLust--A-Travel-Blog-App?type=design&node-id=0%3A1&mode=design&t=c4oCG8N1Fjf7pxTt-1)
-## [Discord Channel](https://discord.gg/FEKasAdCrG)
+- Docker installed on your machine
+- Docker Compose installed (for the automated setup)
 
-## 🎯 Goal of this project
+## Project Structure
 
-At its core, this project embodies two important aims:
+```
+project-root/
+│
+├── frontend/
+│   └── Dockerfile
+│
+├── backend/
+│   └── Dockerfile
+│
+├── data/
+│   └── sample_posts.json
+│
+└── docker-compose.yml
+```
 
-1. **Start Your Open Source Journey**: It's aimed to kickstart your open-source journey. Here, you'll learn the basics of Git and get a solid grip on the MERN stack and I strongly believe that learning and building should go hand in hand.
-2. **React Mastery**: Once you've got the basics down, a whole new adventure begins of mastering React. This project covers everything, from simple form validation to advanced performance enhancements. And I've planned much more cool stuff to add in the near future if the project hits more number of contributors.
+## Manual Dockerization Steps
 
-_I'd love for you to make the most of this project - it's all about learning, helping, and growing in the open-source world._
+### 1. Build Docker Images
 
-## Setting up the project locally
+Navigate to the `frontend` and `backend` directories and build the Docker images:
 
-### Setting up the Backend
+```bash
+cd frontend
+docker build -t frontend .
 
-1. **Fork and Clone the Repository**
+cd ../backend
+docker build -t backend .
+```
 
-   ```bash
-   git clone https://github.com/{your-username}/wanderlust.git
-   ```
+### 2. Create a Docker Network
 
-2. **Navigate to the Backend Directory**
+Create a Docker network named `wanderlust` to allow the containers to communicate with each other:
 
-   ```bash
-   cd backend
-   ```
+```bash
+docker network create wanderlust
+```
 
-3. **Install Required Dependencies**
+### 3. Run Database Containers
 
-   ```bash
-   npm i
-   ```
+Run MongoDB and Redis containers on the created network:
 
-4. **Set up your MongoDB Database**
+```bash
+# Run MongoDB
+docker run --name mongo --network=wanderlust -p 27017:27017 -v ~/opt/data:/data/wanderlust -d mongo:latest
 
-   - Open MongoDB Compass and connect MongoDB locally at `mongodb://localhost:27017`.
+# Run Redis
+docker run --name redis --network=wanderlust -p 6379:6379 -d redis:latest
+```
 
-5. **Import sample data**
+### 4. Run Application Containers
 
-   > To populate the database with sample posts, you can copy the content from the `backend/data/sample_posts.json` file and insert it as a document in the `wanderlust/posts` collection in your local MongoDB database using either MongoDB Compass or `mongoimport`.
+Run the frontend and backend containers:
 
-   ```bash
-   mongoimport --db wanderlust --collection posts --file ./data/sample_posts.json --jsonArray
-   ```
+```bash
+# Run Frontend
+docker run --name frontend --network=wanderlust -p 5173:5173 -d frontend
 
-6. **Configure Environment Variables**
+# Run Backend
+docker run --name backend --network=wanderlust -p 5000:5000 -d backend
+```
 
-   ```bash
-   cp .env.sample .env
-   ```
+### 5. Import Sample Data
 
-7. **Start the Backend Server**
+Copy the sample data file into the MongoDB container and import it into the database:
 
-   ```bash
-   npm start
-   ```
+```bash
+# Copy sample data to MongoDB
+docker cp data/sample_posts.json mongo:/data/
 
-   > You should see the following on your terminal output on successful setup.
-   >
-   > ```bash
-   > [BACKEND] Server is running on port 5000
-   > [BACKEND] Database connected: mongodb://127.0.0.1/wanderlust
-   > ```
+# Access MongoDB shell
+docker exec -it mongo /bin/bash
 
-### Setting up the Frontend
+# Import data
+mongoimport --db wanderlust --collection posts --file ./data/sample_posts.json --jsonArray
+```
 
-1. **Open a New Terminal**
+### 6. Access the Application
 
-   ```bash
-   cd frontend
-   ```
+You can access the application through the following URLs:
 
-2. **Install Dependencies**
+- For remote instances:
+  ```
+  http://<instance-ip>:5173
+  ```
+- For local testing:
+  ```
+  http://localhost:5173
+  ```
 
-   ```bash
-   npm i
-   ```
+## Automating with Docker Compose
 
-3. **Configure Environment Variables**
+To automate the setup, you can use Docker Compose. Make sure you have a `docker-compose.yml` file configured correctly.
 
-   ```bash
-   cp .env.sample .env.local
-   ```
+### 1. Start Services
 
-4. **Launch the Development Server**
+Run the following command to start all services in detached mode:
 
-   ```bash
-   npm run dev
-   ```
+```bash
+docker-compose up -d
+```
 
-## 🌟 Ready to Contribute?
+### 2. Import Sample Data
 
-Kindly go through [CONTRIBUTING.md](https://github.com/krishnaacharyaa/wanderlust/blob/main/.github/CONTRIBUTING.md) to understand everything from setup to contributing guidelines.
+After starting the services, copy the sample data file and import it into the MongoDB container (as described in the manual steps above):
 
-## 💖 Show Your Support
+```bash
+# Copy sample data to MongoDB
+docker cp data/sample_posts.json mongo:/data/
 
-If you find this project interesting and inspiring, please consider showing your support by starring it on GitHub! Your star goes a long way in helping me reach more developers and encourages me to keep enhancing the project.
+# Access MongoDB shell
+docker exec -it mongo /bin/bash
 
-🚀 Feel free to get in touch with me for any further queries or support, happy to help :)
+# Import data
+mongoimport --db wanderlust --collection posts --file ./data/sample_posts.json --jsonArray
+```
+
+### 3. Note on Data Reflection
+
+Sometimes, it may take time for changes to reflect. You can create a test post in your application to verify that everything is working correctly.
+
+---
