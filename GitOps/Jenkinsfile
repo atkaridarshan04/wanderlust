@@ -1,0 +1,79 @@
+pipeline {
+    agent {label 'worker-node'}
+    
+    parameters {
+        string(name: 'FRONTEND_DOCKER_TAG', defaultValue: '', description: 'Frontend Docker tag of the image built by the CI job')
+        string(name: 'BACKEND_DOCKER_TAG', defaultValue: '', description: 'Backend Docker tag of the image built by the CI job')
+    }
+
+    stages {
+        stage("Workspace cleanup"){
+            steps{
+                script{
+                    cleanWs()
+                }
+            }
+        }
+        
+        stage('Git: Code Checkout') {
+            steps {
+                git url: "https://github.com/atkaridarshan04/wanderlust.git", branch: "main"
+            }
+        }
+        
+        stage('Verify: Docker Image Tags') {
+            steps {
+                script{
+                    echo "FRONTEND_DOCKER_TAG: ${params.FRONTEND_DOCKER_TAG}"
+                    echo "BACKEND_DOCKER_TAG: ${params.BACKEND_DOCKER_TAG}"
+                }
+            }
+        }
+        
+        
+        stage("Update: Kubernetes manifests"){
+            steps{
+                script{
+                    dir('k8s'){
+                        sh """
+                            sed -i -e s/wanderlust-backend.*/wanderlust-backend:${params.BACKEND_DOCKER_TAG}/g backend.yml
+                        """
+                    }
+                    
+                    dir('k8s'){
+                        sh """
+                            sed -i -e s/wanderlust-frontend*/wanderlust-frontend:${params.FRONTEND_DOCKER_TAG}/g frontend.yml
+                        """
+                    }
+                    
+                }
+            }
+        }
+        
+        stage("Git: Code update and push to GitHub"){
+            steps{
+                script{
+                    withCredentials([gitUsernamePassword(credentialsId: 'GitHub', gitToolName: 'Default')]) {
+                        sh '''
+                        git config user.email "jenkins@example.com"
+                        git config user.name "jenkins"
+
+                        echo "Checking repository status: "
+                        git status
+                    
+                        echo "Adding changes to git: "
+                        git add .
+                        
+                        echo "Commiting changes: "
+                        git commit -m "Updated environment variables"
+                        
+                        echo "Pushing changes to github: "
+                        git push https://github.com/atkaridarshan04/wanderlust.git main
+                    '''
+                    }
+                }
+            }
+        }
+    }
+
+}
