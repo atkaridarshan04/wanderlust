@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: atkaridarshan04/wanderlust-backend:v1
+          image: atkaridarshan04/wanderlust-backend:v2
           ports:
             - containerPort: 8000
 
